@@ -1,8 +1,8 @@
 # Import required libraries
 import pandas as pd
 import dash
-import dash_html_components as html
-import dash_core_components as dcc
+from dash import html
+from dash import dcc
 from dash.dependencies import Input, Output
 import plotly.express as px
 
@@ -60,37 +60,35 @@ app.layout = html.Div(children=[html.H1('SpaceX Launch Records Dashboard',
 def get_pie_chart(entered_site):
     #filtered_df = spacex_df
     if entered_site == 'ALL':
-        fig = px.pie(spacex_df[['Launch Site', 'class']], values='class', names='Launch Site', 
-        title='title')
+        fig = px.pie(spacex_df[['Launch Site', 'class']], values='class', names='Launch Site', title='Total Successful Landing Outcomes for All Sites')
         return fig
     else:
         # return the outcomes piechart for a selected site
-        filtered_df = spacex_df[['Launch Site'] == entered_site]
-        grouped_site_df = filtered_df.groupby(['Launch Site'], ['class'])
-        fig = px.pie(grouped_site_df, values='class', names='Launch Site', 
-        title=f'Total Successful Landing Outcomes for Site {entered_site}')
+        filtered_df = spacex_df[spacex_df['Launch Site'] == entered_site]
+        grouped_site_df = filtered_df.groupby(['class']).size().reset_index(name='class count')
+        fig = px.pie(grouped_site_df, values='class count', names='class', title=f'Total Successful Landing Outcomes for Site {entered_site}')
         return fig
 
 
 # TASK 4:
 # Add a callback function for `site-dropdown` and `payload-slider` as inputs, `success-payload-scatter-chart` as output
 @app.callback(
+    Output(component_id='success-payload-scatter-chart', component_property='figure'),
     [Input(component_id='site-dropdown', component_property='value'),
-    Input(component_id='payload-slider', component_property='value')],
-    Output(component_id='success-payload-scatter-chart', component_property='figure'))
+    Input(component_id='payload-slider', component_property='value')]
+    )
 def get_scatter_chart(entered_site, payload_slider):
-    low, high = payload_slider
-    boundaries = (spacex_df['Payload Mass (kg)'] > low) & (spacex_df['Payload Mass (kg)'] < high)
-    filtered_df = spacex_df[boundaries]
-
+    low, high = (payload_slider[0], payload_slider[1])
+    #boundaries = (spacex_df['Payload Mass (kg)'] > low) & (spacex_df['Payload Mass (kg)'] < high)
+    filtered_df = spacex_df[spacex_df['Payload Mass (kg)'].between(low, high)]
     if entered_site == 'ALL':
             fig = px.scatter(filtered_df, x='Payload Mass (kg)', y='class', title='Correlation between Payload Mass and Success for All Sites')
             return fig
     else:
         filtered_df = filtered_df[spacex_df['Launch Site'] == entered_site]
         fig = px.scatter(filtered_df, x='Payload Mass (kg)', y='class', color="Booster Version Category", title=f'Correlation between Payload Mass and Success for Launch Site {entered_site}')
-
+        return fig
 
 # Run the app
 if __name__ == '__main__':
-    app.run_server()
+    app.run_server(debug=True)
